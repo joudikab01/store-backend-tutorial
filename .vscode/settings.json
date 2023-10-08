@@ -1,0 +1,4 @@
+{
+    "javascript.preferences.quoteStyle": "double",
+    "javascript.preferences.importModuleSpecifier": "relative"
+}

@@ -4,8 +4,12 @@ import {
   INestApplication,
   ValidationPipe,
 } from '@nestjs/common';
+import { PrismaService } from '../src/prisma/prisma.service';
+import * as pactum from 'pactum';
+import { AuthDto } from '../src/auth/dto';
 describe('App e2e', () => {
   let app: INestApplication;
+  let prisma: PrismaService;
   beforeAll(async () => {
     const moduleRef =
       await Test.createTestingModule({
@@ -18,9 +22,91 @@ describe('App e2e', () => {
       }),
     );
     await app.init();
+    await app.listen(3333);
+    prisma = await app.get(PrismaService);
+    await prisma.cleanDB();
+    pactum.request.setBaseUrl(
+      'http://localhost:3333',
+    );
   });
+
   afterAll(() => {
     app.close();
   });
-  it.todo('should pass');
+  describe('Auth', () => {
+    const dto: AuthDto = {
+      email: 'joudi.kab01@gmail.com',
+      password: '123',
+    };
+    describe('Signup', () => {
+      it('should throw if email is empty', () => {
+        return pactum
+          .spec()
+          .post('/auth/signup')
+          .withBody({
+            password: dto.password,
+          })
+          .expectStatus(400);
+      });
+      it('should throw if password is empty', () => {
+        return pactum
+          .spec()
+          .post('/auth/signup')
+          .withBody({
+            email: dto.email,
+          })
+          .expectStatus(400);
+      });
+      it('should throw if no body provided', () => {
+        return pactum
+          .spec()
+          .post('/auth/signup')
+          .expectStatus(400);
+      });
+      it('should sign up', () => {
+        return pactum
+          .spec()
+          .post('/auth/signup')
+          .withBody(dto)
+          .expectStatus(201)
+          .inspect();
+      });
+    });
+    describe('Signin', () => {
+      let accessToken: String;
+      it('should sign in', () => {
+        return pactum
+          .spec()
+          .post('/auth/signin')
+          .withBody(dto)
+          .expectStatus(200)
+          .stores('userAt', 'access_token');
+      });
+    });
+  });
+
+  describe('User', () => {
+    describe('Get me', () => {
+      it('should get current user', () => {
+        return pactum
+          .spec()
+          .get('/users/me')
+          .withHeaders({
+            Authorization: 'Bearer $S{userAt}',
+          })
+          .expectStatus(200)
+          .inspect();
+      });
+    });
+    describe('Edit user', () => {});
+  });
+
+  describe('Bookmark', () => {
+    describe('Create bookmark', () => {});
+    describe('Get bookmarks', () => {});
+    describe('Get bookmark by id', () => {});
+    describe('Edit bookmark', () => {});
+  });
+
+  // it.todo('should pass');
 });
